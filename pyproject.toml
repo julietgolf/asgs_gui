@@ -1,0 +1,20 @@
+[project]
+name = "asgs-gui"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "jogra", email = "joshua.d.gramm@erdc.dren.mil" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pyqt6==6.7.1",
+    "pyqt6-qt6==6.7.3",
+]
+
+[project.scripts]
+asgs-gui = "asgs_gui:run"
+
+[build-system]
+requires = ["uv_build>=0.9.26,<0.10.0"]
+build-backend = "uv_build"
