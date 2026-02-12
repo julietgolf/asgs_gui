@@ -1,0 +1,166 @@
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem,
+    QPushButton, QLabel, QLineEdit, QDialog, QFormLayout, QDialogButtonBox, QMessageBox,
+    QMainWindow, QDockWidget, QListView, QSpacerItem, QSizePolicy, QStackedWidget, 
+    QComboBox, QStackedLayout, QCheckBox,QHBoxLayout
+)
+from .asgs.handlers import ASGS_API,ASGS_Run_Handler
+INPUT_TYPES={"checkbox":QLineEdit,"combobox":QComboBox,"lineedit":QCheckBox}
+
+class ASGS_Input_Basic(QWidget):
+    def _set_combobox(self,var,mutable=True):
+        label=QLabel(var.pretty_name)
+        combo_box = QComboBox(self)
+        combo_box.addItems([var.value,]+[option for option in var.options if option!=var.value])
+        if not mutable:
+            combo_box.setEnabled(False)
+        self._layout.addRow(label, combo_box)
+
+        self.inputs[var.name]=combo_box
+
+    def _set_lineedit(self,var,mutable=True):
+        label=QLabel(var.pretty_name)
+        line_edit = QLineEdit(self, placeholderText=var.value, clearButtonEnabled=True)
+        if not mutable:
+            line_edit.setReadOnly(True)
+        self._layout.addRow(label, line_edit)
+
+        self.inputs[var.name]=line_edit
+
+    def _set_checkbox(self,var,mutable=True):
+        raise NotImplementedError("Add this you fucking moron") #TODO
+
+    def __init__(self,handler=None,ok_button=True):
+        super().__init__()
+        self.handler=handler
+        self.inputs={}
+        self.setWindowTitle(f"Start Basic ASGS Runner")
+        self._layout = QFormLayout()
+        setter_dict={'combobox':self._set_combobox, 'lineedit':self._set_lineedit, 'checkbox':self._set_checkbox}
+        for var_info in self.handler:
+            setter_dict[var_info[1]](var_info[0],var_info[2])
+
+        if ok_button:
+            self.buttons=QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+            self._layout.addRow(self.buttons)
+        self.setLayout(self._layout)
+
+class Profile_Changed_Warning(QDialog):
+    def __init__(self,parent):
+        super().__init__()
+
+        self._parent=parent
+
+        self.setWindowTitle("ASGS")
+
+        layout = QFormLayout()
+        layout.addRow(QLabel("Profile settings changed. Please save before running."))
+        self.line_edit = QLineEdit(self,placeholderText=str(parent.inputs["profile"].currentText()), clearButtonEnabled=True)
+        layout.addRow("Profile Name",self.line_edit)
+        
+        button_layout = QHBoxLayout()
+        
+        save_button = QPushButton("Save")
+        save_button.clicked.connect(self.save)
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(self.close)
+        
+        button_layout.addWidget(save_button)
+        button_layout.addWidget(cancel_button)
+
+        layout.addRow(button_layout)
+
+        self.setLayout(layout)
+        self.setFixedSize(321,101)
+        self.exec()
+
+    def save(self):
+        text=self.line_edit.text()
+        if text:
+            profile_combobox=self._parent.inputs["profile"]
+            ASGS_API.save("profile",text)
+            index = profile_combobox.findText(self._parent.handler.var_hold_obj.variables["profile"].value)
+            if index >= 0:
+                profile_combobox.setCurrentIndex(index)
+            else:
+                profile_combobox.addItem(text)
+                profile_combobox.setCurrentIndex(profile_combobox.count()-1)
+
+                print(str(profile_combobox.currentText()))
+        else:
+            text=self.line_edit.placeholderText()
+            ASGS_API.save("profile",text)
+
+        self._parent._ca_change[0]=True
+        self._parent._ca_change[1]=True
+        self.close()
+
+class ASGS_Run_Input(ASGS_Input_Basic):
+
+    def __init__(self):
+        super().__init__(ASGS_Run_Handler(),ok_button=False)
+        self.inputs["profile"].currentTextChanged.connect(self.change_profile)
+        self.inputs["config"].currentTextChanged.connect(self.change_config)
+        self.inputs["adcirc"].currentTextChanged.connect(self.change_adcirc)
+
+        self._ca_change=[True,True]
+        run_button=QPushButton("Run")
+        run_button.clicked.connect(self.start_run)
+
+        self._layout.addRow(run_button)
+        self.inputs["run"]=run_button
+
+        
+
+    def change_profile(self):
+        print("profile")
+        print(ASGS_API.profile.value,ASGS_API.profile.options)
+        print(str(self.inputs["profile"].currentText()))
+        ASGS_API.load("profile",str(self.inputs["profile"].currentText()))
+
+        index = self.inputs["config"].findText(self.handler.var_hold_obj.variables["config"].value)
+        if index >= 0:
+            self.inputs["config"].setCurrentIndex(index)
+        else:
+            print("coundlfind config")
+            print(self.handler.var_hold_obj.variables["config"].value)
+        
+        index = self.inputs["mesh"].findText(self.handler.var_hold_obj.variables["mesh"].value)
+        if index >= 0:
+            self.inputs["mesh"].setCurrentIndex(index)
+        else:
+            print("coundlfind mesh")
+
+        index = self.inputs["adcirc"].findText(self.handler.var_hold_obj.variables["adcirc"].value)
+        if index >= 0:
+            self.inputs["adcirc"].setCurrentIndex(index)
+        else:
+            print("coundlfind adcirc")
+
+        self._ca_change[0]=True
+        self._ca_change[1]=True
+
+    def change_config(self):
+        print("config")        
+        index = self.inputs["mesh"].findText(self.handler.var_hold_obj.variables["mesh"].value)
+        if index >= 0:
+            self.inputs["mesh"].setCurrentIndex(index)
+        else:
+            print("coundlfind mesh")
+
+        self._ca_change[0]=False
+
+    def change_adcirc(self):
+        print("adcirc")
+
+        self._ca_change[1]=False
+
+    def start_run(self):
+        if not all(self._ca_change):
+            print("GOOOD DDDANMIT")
+            Profile_Changed_Warning(self)
+            if not all(self._ca_change):
+                return
+
+        print("*LK* ... Nice")

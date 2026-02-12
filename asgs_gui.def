@@ -1,0 +1,55 @@
+Bootstrap: docker
+From: redhat/ubi10
+
+%post
+    #This ensures the systen is always unregisted.
+    unreg() {
+        echo "Cleaning up Red Hat subscription..."
+        subscription-manager unregister || true
+        subscription-manager clean || true
+    }
+
+    trap unreg EXIT
+
+    touch /etc/localtime
+    mkdir -p /p/work/jogra
+
+    subscription-manager register --username julietgolf --password 'V^3bjuc&@^VN4cH2SFW@'
+    dnf config-manager --enable codeready-builder-for-rhel-10-x86_64-rpms
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+    
+    echo "Installing dnf packages"
+    echo ""
+    # Install dnf packages
+    PACKAGES="
+    #General
+        glibc-langpack-en git 
+    #x11
+        libX11 libXext libXrender
+    #qt6
+        mesa-libGL libxkbcommon libxkbcommon libglvnd-egl fontconfig 
+        libxkbcommon-x11 xcb-util-cursor xcb-util-wm xcb-util-keysyms
+    "
+
+    dnf makecache
+    dnf install -y $PACKAGES 
+
+
+
+    echo "Fixing tar"
+    mv /bin/tar /bin/_tar
+    cat <<EOF > /bin/tar
+#!/bin/bash
+_tar --no-same-owner \$(perl -pe 's/(?<![-\w])([a-zA-Z?]{1,10})(?= .*\.(?:tar\.gz|tgz))/-\$1/g' <<< \$@)
+
+EOF
+
+    chmod 755 /bin/tar
+
+    cd /opt
+    git clone git@github.com:julietgolf/asgs_gui.git
+    cd asgs_gui
+    python3 -m venv .venv
+    . .venv/bin/activate
+    pip install uv
+    uv pip install .

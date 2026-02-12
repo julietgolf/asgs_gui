@@ -1,0 +1,17 @@
+#!/bin/bash
+
+while true;do
+    missing_lib=$(python3 test.py 2>&1 | grep -m 1 -Po "lib[^\s]*\.so(?:\.[0-9])?(?=: cannot open shared object file: No such file or directory)" 2>&1)
+
+    echo $missing_lib
+
+    if [ ! -z $missing_lib ];then
+        missing_package=$(dnf --noplugins provides "*/${missing_lib}" 2>&1 | tee /dev/tty 2>&1 | grep -o  ".*\.x86_64")
+        echo $missing_package
+        if [ ! -z $missing_package ];then
+            dnf --noplugins install $missing_package
+        fi
+    else
+        break
+    fi
+done
