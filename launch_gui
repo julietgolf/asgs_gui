@@ -1,0 +1,6 @@
+for func in $(declare -f | grep -o -P '^\w+(?= \(\))'); do
+    export -f  $func
+done
+
+. .venv/bin/activate
+echo launching

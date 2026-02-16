@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.scripts]
-asgs-gui = "asgs_gui:run"
+asgs-gui = "asgs_gui.__main__:run"
 
 [build-system]
 requires = ["uv_build>=0.9.26,<0.10.0"]

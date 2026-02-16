@@ -6,36 +6,23 @@ import re
 from pathlib import Path
 from ..base.base_types import DIALOGUE_INPUT_TYPE
 from .env_var import ENV_Var_File
-import os,sys
-import warnings
+import os
 #TODO Turn this into a module
 #TODO Transition from inputs to sb
 
 class ASGS_API:
-    
-
-    @staticmethod
-    def _check_dirname(name:str):
-        if not name or len(name) > 255:
-            raise ValueError(f"{name} is not a valid name")
-        
-        if not re.match(r"^[a-zA-Z0-9_][a-zA-Z0-9_\-]*$", name):
-            raise ValueError(f"{name} is not a valid name")
-
     @classmethod
-    def _shell_command(cls,command:str,capture_output=True) -> str:
-        #TODO each new command needs to be as a security threat to prevent command line injection attacks
-        print(f"running command: {command}")
-        if capture_output:
-            result=sp.run(command,capture_output=capture_output,shell=True)
-
-            errout=result.stderr.decode("utf-8")
-            if errout:
-                warnings.warn(errout)
-            
-            return result.stdout.decode("utf-8")
-        else:
-            sp.run(command,shell=True,stdout=sys.stdout, stderr=sys.stderr)
+    def _shell_command(cls,command:str):
+        cls.SHELL_ENVIRO.stdin.write(bytes(command+"\necho \"SHELL_ENVIRO FINISHED\"\n","utf-8"))
+        cls.SHELL_ENVIRO.stdin.flush()
+        print("running command")
+        output=b""
+        for line in iter(cls.SHELL_ENVIRO.stdout.readline, b""):
+            if b"SHELL_ENVIRO FINISHED" in line:
+                break
+            output+=line
+        print(output)
+        return output.decode("utf-8")
 
     @classmethod
     def _get_mesh(cls):
@@ -48,10 +35,6 @@ class ASGS_API:
             proc.stdin.flush()
             return proc.stdout.readline().decode("utf-8").strip()
     
-    @classmethod
-    def _get_config_years(cls):
-        return cls.config_years.value
-
     @classmethod
     def _get_config(cls):
         print("_get_config")
@@ -81,14 +64,6 @@ class ASGS_API:
         cls._set_adcirc(adcirc)
 
     @classmethod
-    def _set_config_years(cls,config_years=None):
-        print("setting")
-        if config_years is None:
-            config_years=cls._get_config_years()
-        cls.config_years.value=config_years
-        cls._set_mesh(cls._get_mesh())
-
-    @classmethod
     def _set_config(cls,config=None):
         print("setting")
         if config is None:
@@ -105,51 +80,44 @@ class ASGS_API:
     def _set_options(cls,var: Variable):
         if var.name!="config":
             result=cls.list(cls._PARAM_PLURALS[var.name])
-            print("reult",[val.split()[-1].strip() for val in result])
-            var.options=[val.split()[-1].strip() for val in result]
+            print(result)
+            var.options=[val.split()[-1].strip() for val in result if val]
         else:
-            #TODO Add a config dirs option
-            var.options=[config for config in os.listdir(Path(os.getenv("ASGS_HOME"))/"config"/cls.config_years.value) if ".sh" in config]
+            with open(f"{var.name}.fake") as fake_input:
+                result=fake_input.readlines()
+                var.options=[val.split()[-1].strip() for val in result if val]
+
 
     @classmethod
     def _init(cls):
         cls._PARAM_PLURALS={"profile":"profiles","mesh":"meshes","adcirc":"adcircs"}
+        cls.SHELL_ENVIRO=sp.Popen([Path(os.getenv("ASGS_HOME"))/"asgsh"],stdin=sp.PIPE,stdout=sp.PIPE,stderr=sp.STDOUT,bufsize=1)
 
+        cls.SHELL_ENVIRO.stdin.write(b"\necho 'INITIALIZED'\n")
+        cls.SHELL_ENVIRO.stdin.flush()
+
+        for line in iter(cls.SHELL_ENVIRO.stdout.readline, b""):
+            print(line.decode())
+            if b"INITIALIZED" in line:
+                break
+        
         print("running")
-        #cls.load("profile","default-asgs")
+        cls.load("profile","default-asgs")
         current_profile=cls._get_profile()
         cls.profile=Variable("profile",current_profile,"Profile",current_profile)
         cls._pro_file=ENV_Var_File.load(Path(os.getenv("ASGS_HOME"))/"profiles"/cls.profile.value)
         print(cls._pro_file)
         cls._set_options(cls.profile)
         print(cls.profile)
-
         current_config=cls._get_config()
-
-        year_check=re.compile(r"20[0-2][0-9]")
-        years=[year for year in os.listdir(Path(os.getenv("ASGS_HOME"))/"config") if re.search(year_check,year) is not None]
-        years.sort()
-
-        year=re.search(r"20[0-2][0-9](?=/.+\.sh)",current_config)
-        if year is None:
-            year=years[-1]
-        else:
-            year=year.group()
-
-        cls.config_years=Variable("config_years",year,default_value=year)
-        cls.config_years.options=years
         cls.config=Variable("config",current_config,"Config",current_config)
         cls._set_options(cls.config)
         print(cls.config)
-
-
         #echo $ADCIRC_PROFILE_NAME
         current_adcirc=cls._get_adcirc()
         cls.adcirc=Variable("adcirc",current_adcirc,"ADCIRC",current_adcirc)
         cls._set_options(cls.adcirc)
         print(cls.adcirc)
-
-
         current_mesh=cls._get_mesh()
         cls.mesh=Variable("mesh",current_mesh,"Mesh",current_mesh)
         cls._set_options(cls.mesh)
@@ -175,9 +143,7 @@ class ASGS_API:
 
     @classmethod
     def load(cls,param:str,name:str):
-        cls._check_dirname(name)
         cls._shell_command(f"load {param} {name}")
-
         if param=="profile":
             cls._set_profile(name)
         elif param=="adcirc":
@@ -186,7 +152,7 @@ class ASGS_API:
 
     @classmethod
     def run(cls):
-        cls._shell_command("run",capture_output=False)
+        ...
 
     @classmethod
     def define(cls,param:Literal["adcircdir", "adcircbranch", "adcircremote", "config", "editor", "hostfile", "scratchdir", "scriptdir", "workdir"], value: str):
@@ -201,8 +167,7 @@ class ASGS_API:
 
     @classmethod    
     def save(cls,param:str,name:str):
-        cls._check_dirname(name)
-        cls._shell_command(f"save {param} {name}")
+        cls._shell_command(f"save {param} {name}",shell=True,executable=Path(os.getenv("ASGS_HOME")/"asgsh"))
 
         if name not in cls.profile.options:
             cls.profile.add_option(name)
@@ -215,7 +180,8 @@ class ASGS_API:
 
     @classmethod    
     def list(cls,param: Literal['adcirc', 'configs', 'meshes', 'platforms', 'profiles']) -> list[str]:
-        return [val for val in cls._shell_command(f"list {param}").split("\n") if val]
+        
+        return cls._shell_command(f"list {param}")
 
     @classmethod
     def get_results(cls):
@@ -241,15 +207,14 @@ class ASGS_API_Bin(Var_Bin):
         super().__init__(
             "ASGS API Bin",
             profile=ASGS_API.profile,
-            config_years=ASGS_API.config_years,
             config=ASGS_API.config,
             adcirc=ASGS_API.adcirc,
             mesh=ASGS_API.mesh,
         )
 
 class ASGS_Run_Handler(Generic_Handler,
-                       var_names=["profile","config_years","config","adcirc","mesh"],
-                       var_input_type={"profile":'combobox',"config_years":'combobox',"config":'combobox',"adcirc":'combobox',"mesh":'combobox'},
+                       var_names=["profile","config","adcirc","mesh"],
+                       var_input_type={"profile":'combobox',"config":'combobox',"adcirc":'combobox',"mesh":'combobox'},
                        immutable_vars=["mesh"]
                       ):
     def __init__(self,var_input_type:dict[str,DIALOGUE_INPUT_TYPE]={},immutable_vars: list[str]=[]):
