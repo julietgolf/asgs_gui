@@ -23,11 +23,8 @@ class ENV_Var_File(Var_Bin,var_type=ENV_Variable):
         self.path=path
         super().__init__(name,**kwargs)
 
-    # TODO Stress test to detirmine if multiproc is needed
-    @classmethod
-    def load(cls,path: Path | str):
-        if isinstance(path,str):
-            path=Path(path)
+    @staticmethod
+    def _read(path):
         vars={}
         
         num_test_start="0123456789+-."
@@ -38,12 +35,14 @@ class ENV_Var_File(Var_Bin,var_type=ENV_Variable):
 
         with open(path,"r") as file:
             for line in file:
-                if not line or len(line)>=2 and line[0:2]=="#!":
+                if len(line)<6 or line.strip()[0:6]!="export":
                     continue
 
                 val: str=re.findall(val_regex,line)
-                if val: 
+                if val:
                     val=val[0]
+                    if "#" in val:
+                        val=val.split("#")[0].strip()
                 else:
                     val=""
 
@@ -61,8 +60,40 @@ class ENV_Var_File(Var_Bin,var_type=ENV_Variable):
                                 except:
                                     pass
                 vars[re.findall(key_regex,line)[0]]=val
+        return vars
+
+    # TODO Stress test to detirmine if multiproc is needed
+    @classmethod
+    def load(cls,path: Path | str):
+        if isinstance(path,str):
+            path=Path(path)
         
-        return cls(path.name,path,**vars)
+        
+        return cls(path.name,path,**cls._read(path))
+
+    def update(self,path: Path | str,delete_diff: bool=False):
+        """Updates variables in place so all object refs stay the say."""
+        if isinstance(path,str):
+            path=Path(path)
+
+        new_vars=self._read(path)
+        
+        if not delete_diff:
+            for key in self.variables.keys() - new_vars.keys():
+                self.variables[key].value=""
+        else:
+            for key in self.variables.keys() - new_vars.keys():
+                del self.variables[key]
+
+        for key in new_vars.keys():
+            var=new_vars[key]
+            
+            if key in self.variables:
+                self.variables[key].value=var if not isinstance(var,ENV_Variable) else var.value
+            else:
+                self.variables[key]=var if isinstance(var,ENV_Variable) else ENV_Variable(key,var)
+        
+
 
     def __repr__(self):
         return "\n".join((str(val) for val in self.variables.values()))

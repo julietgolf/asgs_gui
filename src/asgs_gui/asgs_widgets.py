@@ -99,8 +99,30 @@ class Profile_Changed_Warning(QDialog):
 class ASGS_Run_Input(ASGS_Input_Basic):
 
     def __init__(self):
-        super().__init__(ASGS_Run_Handler(),ok_button=False)
+        super(QWidget,self).__init__()
+        self.handler=ASGS_Run_Handler()
+        self.inputs={}
+        self.setWindowTitle(f"Start Basic ASGS Runner")
+        self._layout = QFormLayout()
+        self._set_combobox(self.handler.get_var("profile"))
+
+        self._config_layout=QHBoxLayout()
+
+        for var in (self.handler.get_var("config_years"),self.handler.get_var("config")):
+            combo_box = QComboBox(self)
+            combo_box.addItems([var.value,]+[option for option in var.options if option!=var.value])
+            self._config_layout.addWidget(combo_box)
+            print("combo_box",var.name)
+            self.inputs[var.name]=combo_box
+
+        self._layout.addRow(QLabel(var.pretty_name),self._config_layout)
+        self.inputs["config_years"].setFixedWidth(55)
+        self._set_combobox(self.handler.get_var("adcirc"))
+        self._set_combobox(self.handler.get_var("mesh"),False)
+
+
         self.inputs["profile"].currentTextChanged.connect(self.change_profile)
+        self.inputs["config_years"].currentTextChanged.connect(self.change_config_years)
         self.inputs["config"].currentTextChanged.connect(self.change_config)
         self.inputs["adcirc"].currentTextChanged.connect(self.change_adcirc)
 
@@ -110,6 +132,7 @@ class ASGS_Run_Input(ASGS_Input_Basic):
 
         self._layout.addRow(run_button)
         self.inputs["run"]=run_button
+        self.setLayout(self._layout)
 
         
 
@@ -141,6 +164,14 @@ class ASGS_Run_Input(ASGS_Input_Basic):
         self._ca_change[0]=True
         self._ca_change[1]=True
 
+    def change_config_years(self):
+        ASGS_API._set_config_years(str(self.inputs["config_years"].currentText()))
+        ASGS_API._set_options(ASGS_API.config)
+        self.inputs["config"].clear()
+        self.inputs["config"].addItems([ASGS_API.config.value,]+[option for option in ASGS_API.config.options if option!=ASGS_API.config.value])
+
+
+
     def change_config(self):
         print("config")        
         index = self.inputs["mesh"].findText(self.handler.var_hold_obj.variables["mesh"].value)
@@ -164,3 +195,4 @@ class ASGS_Run_Input(ASGS_Input_Basic):
                 return
 
         print("*LK* ... Nice")
+        ASGS_API.run()
