@@ -23,50 +23,63 @@ class _Server_Handler:
             raise FileExistsError(f"Missings pipe file in {self.server_meta_dir}.")
     
         self._end_token=str(hash("---Server-Call-Done---"))+"\n"
-
+        self._server_call_out=self.server_meta_dir/(self._end_token.strip()+".out")
+        self._server_call_out.touch()
         self.pipeout=open(self._pipeout_path,"r")
         self.pipein=open(self._pipein_path,"w")
-        start_file=self.server_meta_dir/".gui_init"
+        #start_file=self.server_meta_dir/".gui_init"
 
-        self._ansi_filter=re.compile(r'\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\].*?(?:\x07|\x1b\\)|\x1b[A-Za-z0-9_=><]|\x1b[\x20-\x2f]?[\x30-\x7e]')
-        self._prompt=re.compile(r"^\[ASGS \([a-zA-Z0-9_][a-zA-Z0-9_\+-]*\)\] [a-zA-Z0-9_][a-zA-Z0-9_\+-]*@[a-zA-Z0-9_][a-zA-Z0-9_\+-]*>")
+        #self._ansi_filter=re.compile(r'\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\].*?(?:\x07|\x1b\\)|\x1b[A-Za-z0-9_=><]|\x1b[\x20-\x2f]?[\x30-\x7e]')
+        #self._prompt=re.compile(r"^\[ASGS \([a-zA-Z0-9_][a-zA-Z0-9_\+-]*\)\] [a-zA-Z0-9_][a-zA-Z0-9_\+-]*@[a-zA-Z0-9_][a-zA-Z0-9_\+-]*>")
 
-        if start_file.exists():
-            return
+        #if start_file.exists():
+        #    return
         
-        self.pipein.write("\n")
+        self.pipein.write("echo --end--\n")
         self.pipein.flush()
-
-        while True:
-            line=self.pipeout.readline()
-            print(line,end="")
-            line=self._ansi_filter.sub("",line)
-            if re.search(self._prompt,line):
-                #print("line 35: Broken")
-                break
-        
-        start_file.touch()
+#
+        #while True:
+        #    line=self.pipeout.readline()
+        #    print(line,end="")
+        #    line=self._ansi_filter.sub("",line)
+        #    if line == "--end--\n":#re.search(self._prompt,line):
+        #        #print("line 35: Broken")
+        #        break
+        #
+        #start_file.touch()
 
     def run(self,command):
-        self.pipein.write(command+"; echo "+self._end_token)
+        print(command+f" > {self._server_call_out}; echo "+self._end_token)
+        self.pipein.write(command+f" > {self._server_call_out}; echo "+self._end_token)
         self.pipein.flush()
+        if command=="run":
+            return
         output=""
         while True:
             line=self.pipeout.readline()
             print(line)
-            if line=='\x1b[?2004l\n':
-                continue
-            
-            line=self._ansi_filter.sub("",line)
-            if re.search(self._prompt,line):
-                continue
-            elif self._end_token==line:
+            if line==self._end_token:
                 break
-            elif self._end_token in line:
-                continue
-            else:
-                print(line)
-                output+=line
+        with open(self._server_call_out,"r") as out:
+            while True:
+                line=out.readline()
+                print("line",line)
+                #line=self.pipeout.readline()
+                if not line:
+                    break
+                #if line=='\x1b[?2004l\n':
+                #    continue
+                #
+                #line=self._ansi_filter.sub("",line)
+                #if re.search(self._prompt,line):
+                #    continue
+                #elif self._end_token==line:
+                #    break
+                #elif self._end_token in line:
+                #    continue
+                else:
+                    print(line)
+                    output+=line
 
         return output
 
