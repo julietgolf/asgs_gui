@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from ..base.base_types import DIALOGUE_INPUT_TYPE
 from .env_var import ENV_Var_File
-import os,sys,signal,psutil
+import os,sys,signal #psutil
 import warnings
 #TODO Turn this into a module
 #TODO Transition from inputs to sb
@@ -271,29 +271,29 @@ class ASGS_API:
         cls._shell_command(f"run",capture_output=False)
         #cls._run_proc=sp.Popen(f"load profile {cls.profile.value}; run",shell=True,start_new_session=True)
 
-    @classmethod
-    def kill_run(cls):
+    #@classmethod
+    #def kill_run(cls):
         # 1. Kill the immediate Popen object if it's still tracked
-        if cls._run_proc:
-            try:
-                os.kill(cls._run_proc.pid, signal.SIGKILL)
-            except:
-                pass
+    #    if cls._run_proc:
+    #        try:
+    #            os.kill(cls._run_proc.pid, signal.SIGKILL)
+    #        except:
+    #            pass
 
         # 2. THE REAPER: Search for all orphans linked to this ASGS run
         # We look for processes containing 'asgs' or your specific config path
-        keywords = ["asgs_main.sh", "opendap_post2.sh", "asgs_config"]
+    #    keywords = ["asgs_main.sh", "opendap_post2.sh", "asgs_config"]
         
-        for proc in psutil.process_iter(['pid', 'cmdline']):
-            try:
-                cmdline = " ".join(proc.info['cmdline'] or [])
-                if any(key in cmdline for key in keywords):
-                    print(f"Killing orphan: {cmdline} (PID: {proc.info['pid']})")
-                    os.kill(proc.info['pid'], signal.SIGKILL)
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                continue
+    #    for proc in psutil.process_iter(['pid', 'cmdline']):
+    #        try:
+    #            cmdline = " ".join(proc.info['cmdline'] or [])
+    #            if any(key in cmdline for key in keywords):
+    #                print(f"Killing orphan: {cmdline} (PID: {proc.info['pid']})")
+    #                os.kill(proc.info['pid'], signal.SIGKILL)
+    #        except (psutil.NoSuchProcess, psutil.AccessDenied):
+    #            continue
 
-        cls._run_proc = None
+    #    cls._run_proc = None
 
     @classmethod
     def define(cls,param:Literal["adcircdir", "adcircbranch", "adcircremote", "config", "editor", "hostfile", "scratchdir", "scriptdir", "workdir"], value: str):
