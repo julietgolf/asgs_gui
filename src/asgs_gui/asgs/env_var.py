@@ -78,10 +78,7 @@ class ENV_Var_File(Var_Bin,var_type=ENV_Variable):
 
         new_vars=self._read(path)
         
-        if not delete_diff:
-            for key in self.variables.keys() - new_vars.keys():
-                self.variables[key].value=""
-        else:
+        if delete_diff:
             for key in self.variables.keys() - new_vars.keys():
                 del self.variables[key]
 
@@ -103,10 +100,10 @@ class ENV_Var_File(Var_Bin,var_type=ENV_Variable):
             name=Path(name)
 
         # TODO Use this as a test for a dev package
-        if name.exists():
-            raise FileExistsError(f"Adcirc meta data file already exists at {name}.\nPlease contact ASGS admin.")
+        #if name.exists():
+        #    raise FileExistsError(f"Adcirc meta data file already exists at {name}.\nPlease contact ASGS admin.")
         
-        with open(name,"x") as adcirc_met_file:
+        with open(name,"w") as adcirc_met_file:
             adcirc_met_file.write("\n".join((str(val) for val in self.variables.values())))
 
 # Load a profile then check for the variables. This will assist in dealing with logic of the bash scripts
