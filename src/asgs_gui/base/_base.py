@@ -42,9 +42,9 @@ class ParentWidget(QStackedWidget):
     def settop(self,widget: str | int):
         """Moves a widget to the top."""
         if isinstance(widget,str):
-            widget=self[widget]
-        
-        self.setCurrentIndex(widget)
+            widget=self._widgets[widget][0]
+        print(widget)
+        self.setCurrentWidget(widget)
 
     def __index__(self,key):
         try:
@@ -62,6 +62,8 @@ class SidebarWidget(QDockWidget):
                  *,
                  logo: str=None,
                  settings: bool=False,
+                 settings_signal: SIGNALS_TYPE | None=None,
+                 settings_command: Callable| None=None,
                  width: int=150
                  ):
         super().__init__()
@@ -94,7 +96,7 @@ class SidebarWidget(QDockWidget):
 
         for button in buttons:
             # Navigation buttons
-            self.nav_buttons.append(QPushButton(button, self))
+            self.nav_buttons.append(QPushButton(button))
 
             # Add buttons to navigation layout
             nav_layout.addWidget(self.nav_buttons[-1])
@@ -116,7 +118,7 @@ class SidebarWidget(QDockWidget):
                 call_signals=[signal if signal is not None else "clicked" for signal in signals]
 
             for (button,command,signal) in zip(self.nav_buttons,commands,call_signals):
-                getattr(button,signal)(command)
+                getattr(button,signal).connect(command)
 
         # --- Settings Section ---
         if settings:
@@ -124,8 +126,11 @@ class SidebarWidget(QDockWidget):
             self.layout.addItem(spacer)
 
             # --- Settings Button ---
-            settings_button = QPushButton("Settings", self)
+            settings_button = QPushButton("Settings")
             self.layout.addWidget(settings_button, alignment=Qt.AlignmentFlag.AlignBottom)
+            if settings_signal is None:
+                    settings_signal="clicked"
+            getattr(settings_button,settings_signal).connect(settings_command)
 
         # Adjust the size
         self.setFixedWidth(width)
