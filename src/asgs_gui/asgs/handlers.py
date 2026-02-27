@@ -270,19 +270,20 @@ class ASGS_API:
 
     @classmethod
     def load(cls,param:str,name:str):
-       # cls._check_dirname(name)
-        cls._shell_command(f"load {param} {name}")
+        #cls._check_dirname(name)
+        #cls._shell_command(f"load {param} {name}")
 
         if param=="profile":
-            cls._pro_file.update(Path(cls._pro_file.variables["ASGS_META_DIR"].value)/name)
+            cls._pro_file.update(Path(cls._pro_file.variables["ASGS_META_DIR"].value)/name,delete_diff=True)
             cls._set_profile(name)
         elif param=="adcirc":
+            cls._pro_file.update(Path(cls._pro_file.variables["ADCIRC_META_DIR"].value)/name)
             cls._set_adcirc(cls._get_adcirc())
 
     @classmethod
     def run(cls):
-        cls._shell_command(f"run",capture_output=False)
-        #cls._run_proc=sp.Popen(f"load profile {cls.profile.value}; run",shell=True,start_new_session=True)
+        #cls._shell_command(f"run",capture_output=False)
+        cls._run_proc=sp.Popen(f"load profile {cls.profile.value}; run",shell=True,start_new_session=True)
 
     #@classmethod
     #def kill_run(cls):
@@ -310,7 +311,7 @@ class ASGS_API:
 
     @classmethod
     def define(cls,param:Literal["adcircdir", "adcircbranch", "adcircremote", "config", "editor", "hostfile", "scratchdir", "scriptdir", "workdir"], value: str):
-        cls._shell_command(f"define {param} {value}")
+        #cls._shell_command(f"define {param} {value}")
         
         if param=="config":
             cls._set_config(value)
