@@ -114,11 +114,11 @@ class ASGS_API:
             cls._server.run(command)
 
     @classmethod
-    def _get_mesh(cls,config=None):
+    def _get_mesh(cls,config_path=None):
         print("_get_mesh")
-        if config is None:
-            config=cls._get_config_path()
-        with open(config, 'r') as f:
+        if config_path is None:
+            config_path=cls._get_config_path()
+        with open(config_path, 'r') as f:
             for line in f:
                 if "GRIDNAME=" in line:
                     return line.strip().split("=")[1]
@@ -127,12 +127,10 @@ class ASGS_API:
     def _get_config_years(cls):
         return cls.config_years.value
 
-    
-
     @classmethod
     def _get_config_path(cls):
         print("_get_config_path")
-        return Path(cls._pro_file.variables["ASGS_HOME"].value)/"config"/cls._get_config_years()/cls.config.value
+        return cls._config_path#Path(cls._pro_file.variables["ASGS_HOME"].value)/"config"/cls._get_config_years()/cls.config.value
 
 
     @classmethod
@@ -166,20 +164,26 @@ class ASGS_API:
         cls.adcirc.value=adcirc
 
     @classmethod
-    def _set_config_years(cls,config_years=None):
+    def _set_config_path(cls,config_path=None):
         print("naisfj")
-        if config_years is None:
-            config_years=cls._get_config_years()
-        cls.config_years.value=config_years
+        if config_path is None:
+            config_path=cls._get_config_path()
+        if not isinstance(config_path,Path):
+            config_path=Path(config_path)
+        
+        print(config_path)
+        cls._config_path=config_path
+        cls._set_config(config_path.name)
         #cls._set_mesh(cls._get_mesh())
 
     @classmethod
     def _set_config(cls,config=None):
-        print("setting")
-        if config is None:
-            year,config=str(cls._get_config()).split("/")[-2:]
-            print(year)
-            cls._set_config_years(year)
+        print("setting config",config)
+        #if config is None:
+            #year,config=str(cls._get_config()).split("/")[-2:]
+            #print(year)
+            #cls._set_config_years(year)
+
         cls.config.value=config
         cls._set_mesh(cls._get_mesh())
 
@@ -218,20 +222,23 @@ class ASGS_API:
 
         current_config=cls._pro_file.variables["ASGS_CONFIG"].value#cls._get_config()
 
-        year_check=re.compile(r"20[0-2][0-9]")
-        years=[year for year in os.listdir(Path(cls._pro_file.variables["ASGS_HOME"].value)/"config") if re.search(year_check,year) is not None]
-        years.sort(reverse=True)
+        #year_check=re.compile(r"20[0-2][0-9]")
+        #years=[year for year in os.listdir(Path(cls._pro_file.variables["ASGS_HOME"].value)/"config") if re.search(year_check,year) is not None]
+        #years.sort(reverse=True)
 
-        year=re.search(r"20[0-2][0-9](?=/.+\.sh)",current_config)
-        if year is None:
-            year=years[0]
-        else:
-            year=year.group()
+        #year=re.search(r"20[0-2][0-9](?=/.+\.sh)",current_config)
+        #if year is None:
+        #    year=years[0]
+        #else:
+        #    year=year.group()
 
-        cls.config_years=Variable("config_years",year,default_value=year)
-        cls.config_years.options=years
-        cls.config=Variable("config",current_config.split("/")[-1],"Config",current_config.split("/")[-1])
-        cls._set_options(cls.config)
+        #cls.config_years=Variable("config_years",year,default_value=year)
+        #cls.config_years.options=years
+        current_config=Path(current_config)
+        cls._config_path=current_config
+        cls.config=Variable("config",current_config.name,"Config")
+        #cls._set_options(cls.config)
+
         print(cls.config)
 
 
@@ -285,29 +292,6 @@ class ASGS_API:
         #cls._shell_command(f"run",capture_output=False)
         cls._run_proc=sp.Popen(f"load profile {cls.profile.value}; run",shell=True,start_new_session=True)
 
-    #@classmethod
-    #def kill_run(cls):
-        # 1. Kill the immediate Popen object if it's still tracked
-    #    if cls._run_proc:
-    #        try:
-    #            os.kill(cls._run_proc.pid, signal.SIGKILL)
-    #        except:
-    #            pass
-
-        # 2. THE REAPER: Search for all orphans linked to this ASGS run
-        # We look for processes containing 'asgs' or your specific config path
-    #    keywords = ["asgs_main.sh", "opendap_post2.sh", "asgs_config"]
-        
-    #    for proc in psutil.process_iter(['pid', 'cmdline']):
-    #        try:
-    #            cmdline = " ".join(proc.info['cmdline'] or [])
-    #            if any(key in cmdline for key in keywords):
-    #                print(f"Killing orphan: {cmdline} (PID: {proc.info['pid']})")
-    #                os.kill(proc.info['pid'], signal.SIGKILL)
-    #        except (psutil.NoSuchProcess, psutil.AccessDenied):
-    #            continue
-
-    #    cls._run_proc = None
 
     @classmethod
     def define(cls,param:Literal["adcircdir", "adcircbranch", "adcircremote", "config", "editor", "hostfile", "scratchdir", "scriptdir", "workdir"], value: str):
@@ -328,7 +312,7 @@ class ASGS_API:
         if param=="profile":
             if update_adcirc:
                 cls._pro_file.update(Path(cls._pro_file.variables["ADCIRC_META_DIR"].value)/cls.adcirc.value)
-            cls._pro_file.variables["ASGS_CONFIG"].value=Path(cls._pro_file.variables["ASGS_HOME"].value)/"config"/cls.config_years.value/cls.config.value
+            cls._pro_file.variables["ASGS_CONFIG"].value=str(cls._config_path)
             cls._pro_file.save(Path(cls._pro_file.variables["ASGS_META_DIR"].value)/name)
             if name not in cls.profile.options:
                 cls.profile.add_option(name)
@@ -367,15 +351,14 @@ class ASGS_API_Bin(Var_Bin):
         super().__init__(
             "ASGS API Bin",
             profile=ASGS_API.profile,
-            config_years=ASGS_API.config_years,
             config=ASGS_API.config,
             adcirc=ASGS_API.adcirc,
             mesh=ASGS_API.mesh,
         )
 
 class ASGS_Run_Handler(Generic_Handler,
-                       var_names=["profile","config_years","config","adcirc","mesh"],
-                       var_input_type={"profile":'combobox',"config_years":'combobox',"config":'combobox',"adcirc":'combobox',"mesh":'combobox'},
+                       var_names=["profile","config","adcirc","mesh"],
+                       var_input_type={"profile":'combobox',"config":'combobox',"adcirc":'combobox',"mesh":'combobox'},
                        immutable_vars=["mesh"]
                       ):
     def __init__(self,var_input_type:dict[str,DIALOGUE_INPUT_TYPE]={},immutable_vars: list[str]=[]):

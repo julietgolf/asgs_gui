@@ -107,23 +107,27 @@ class ASGS_Run_Input(ASGS_Input_Basic):
 
         self._config_layout=QHBoxLayout()
 
-        for var in (self.handler.get_var("config_years"),self.handler.get_var("config")):
-            combo_box = QComboBox(self)
-            combo_box.addItems([var.value,]+[option for option in var.options if option!=var.value])
-            self._config_layout.addWidget(combo_box)
-            print("combo_box",var.name)
-            self.inputs[var.name]=combo_box
+        config=self.handler.get_var("config")
+        config_label=QLabel(config.value)
+        self._config_layout.addWidget(config_label)
+        self.inputs["config"]=config_label
 
-        self._layout.addRow(QLabel(var.pretty_name),self._config_layout)
-        self.inputs["config_years"].setFixedWidth(55)
+        config_button=QPushButton("Select")
+        config_button.setFixedWidth(55)
+        self._config_layout.addWidget(config_button)
+        self.inputs["config_button"]=config_button
+
+        self._layout.addRow(QLabel(config.pretty_name),self._config_layout)
         self._set_combobox(self.handler.get_var("adcirc"))
-        self._set_combobox(self.handler.get_var("mesh"),False)
+        mesh_label=QLabel(self.handler.get_var("mesh").value)
+        self._layout.addRow(QLabel("Mesh"),mesh_label)
+        self.inputs["mesh"]=mesh_label
 
         self._button_layout=QHBoxLayout()
         
-        cancel_button=QPushButton("Cancel")
-        self._button_layout.addWidget(cancel_button)
-        self.inputs["cancel"]=cancel_button
+        #cancel_button=QPushButton("Cancel")
+        #self._button_layout.addWidget(cancel_button)
+        #self.inputs["cancel"]=cancel_button
 
         save_button=QPushButton("Save")
         self._button_layout.addWidget(save_button)
@@ -135,10 +139,10 @@ class ASGS_Run_Input(ASGS_Input_Basic):
         self._layout.addRow(self._button_layout)
 
         self.inputs["profile"].currentTextChanged.connect(self.change_profile)
-        self.inputs["config_years"].currentTextChanged.connect(self.change_config_years)
-        self.inputs["config"].currentTextChanged.connect(self.change_config)
+        #self.inputs["config_years"].currentTextChanged.connect(self.change_config_years)
+        self.inputs["config_button"].clicked.connect(self.change_config)
         self.inputs["adcirc"].currentTextChanged.connect(self.change_adcirc)
-        cancel_button.clicked.connect(self.stop_run)
+        #cancel_button.clicked.connect(self.stop_run)
         save_button.clicked.connect(self.save_profile)
         run_button.clicked.connect(self.start_run)
 
@@ -152,28 +156,16 @@ class ASGS_Run_Input(ASGS_Input_Basic):
         ASGS_API.load("profile",str(self.inputs["profile"].currentText()))
         print("Chanfing profile ")
 
-        index = self.inputs["config_years"].findText(self.handler.var_hold_obj.variables["config_years"].value)
-        print(index)
-        if index >= 0:
-            #SGS_API._set_config()
-            self.inputs["config_years"].setCurrentIndex(index)
-        else:
-            print("fuck",self.handler.var_hold_obj.variables["config_years"].value)
+        #index = self.inputs["config_years"].findText(self.handler.var_hold_obj.variables["config_years"].value)
+        #print(index)
+        #if index >= 0:
+        #    #SGS_API._set_config()
+        #    self.inputs["config_years"].setCurrentIndex(index)
+        #else:
+        #    print("fuck",self.handler.var_hold_obj.variables["config_years"].value)
 
-        index = self.inputs["config"].findText(self.handler.var_hold_obj.variables["config"].value)
-        print(index)
-        if index >= 0:
-            self.inputs["config"].setCurrentIndex(index)
-        else:
-            print("fuck",self.handler.var_hold_obj.variables["config"].value)
-        
-
-        index = self.inputs["mesh"].findText(self.handler.var_hold_obj.variables["mesh"].value)
-        print(index)
-        if index >= 0:
-            self.inputs["mesh"].setCurrentIndex(index)
-        else:
-            print("coundlfind mesh")
+        self.inputs["config"].setText(self.handler.var_hold_obj.variables["config"].value)
+        self.inputs["mesh"].setText(self.handler.var_hold_obj.variables["mesh"].value)
 
         index = self.inputs["adcirc"].findText(self.handler.var_hold_obj.variables["adcirc"].value)
         print(index)
@@ -203,21 +195,26 @@ class ASGS_Run_Input(ASGS_Input_Basic):
         self.inputs["config"].blockSignals(False)
 
     def change_config(self):
-        config=self.inputs["config"].currentText()
-        print(self.changedyear)
-        if self.changedyear:
-            self.changedyear=False
+
+        file_dialog=QFileDialog(self)
+        file_dialog.setWindowTitle("Select Config")
+        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        file_dialog.setViewMode(QFileDialog.ViewMode.Detail)
+        file_dialog.setNameFilter("*.sh")
+        file_dialog.setDirectory(str(ASGS_API._ASGS_HOME))
+        if file_dialog.exec():
+            config=file_dialog.selectedFiles()[0]
+            print(config)
             
+        else:
             return
+
+        #config=self.inputs["config"].currentText()
         print("config")
         print(config)
-        ASGS_API._set_config(config)
-        index = self.inputs["mesh"].findText(self.handler.var_hold_obj.variables["mesh"].value)
-        if index >= 0:
-            print(index)
-            self.inputs["mesh"].setCurrentIndex(index)
-        else:
-            print("coundlfind mesh")
+        ASGS_API._set_config_path(config)
+        self.inputs["config"].setText(self.handler.var_hold_obj.variables["config"].value)
+        self.inputs["mesh"].setText(self.handler.var_hold_obj.variables["mesh"].value)
 
         self._ca_change[0]=False
 
@@ -243,7 +240,9 @@ class ASGS_Run_Input(ASGS_Input_Basic):
 
 
     def save_profile(self):
+        self.inputs["profile"].blockSignals(True)
         Profile_Save_Dialog(self,"Enter name to create a new profile or leave empty to\n update current.")
+        self.inputs["profile"].blockSignals(False)
 
 
 class Settings_Widget(ASGS_Input_Basic):
