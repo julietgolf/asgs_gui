@@ -2,7 +2,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget,   
     QPushButton, QLabel, QLineEdit, QDialog, QFormLayout, QDialogButtonBox,       
-    QComboBox, QCheckBox,QHBoxLayout
+    QComboBox, QCheckBox,QHBoxLayout,QFileDialog
 )
 from .handlers import ASGS_API,ASGS_Run_Handler,ASGS_Settings_Handlers
 INPUT_TYPES={"checkbox":QLineEdit,"combobox":QComboBox,"lineedit":QCheckBox}
@@ -224,7 +224,7 @@ class ASGS_Run_Input(ASGS_Input_Basic):
     def change_adcirc(self):
         print("adcirc")
         print(self.inputs["adcirc"].currentText())
-        ASGS_API._set_adcirc(self.inputs["adcirc"].currentText()) 
+        ASGS_API.load("adcirc",self.inputs["adcirc"].currentText()) 
         self._ca_change[1]=False
 
     def start_run(self):
