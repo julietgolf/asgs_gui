@@ -1,9 +1,25 @@
 Bootstrap: docker
-From: redhat/ubi10
+From: registry.access.redhat.com/ubi10/ubi:latest
+
+%setup
+
+
+    if [ ! -e ${APPTAINER_ROOTFS}/{{ ssh_auth_sock }} ];then
+        mkdir -p $(dirname ${APPTAINER_ROOTFS}/{{ ssh_auth_sock }})
+        touch ${APPTAINER_ROOTFS}/{{ ssh_auth_sock }}
+        ls ${APPTAINER_ROOTFS}/{{ ssh_auth_sock }}
+    fi
+    if [ ! -e ${APPTAINER_ROOTFS}/root/.ssh/known_hosts ];then
+        mkdir -p ${APPTAINER_ROOTFS}/root/.ssh/
+        touch ${APPTAINER_ROOTFS}/root/.ssh/known_hosts
+        chmod -R 700 ${APPTAINER_ROOTFS}/root/.ssh
+        chmod 644 ${APPTAINER_ROOTFS}/root/.ssh/known_hosts
+    fi
 
 %post
     #This ensures the systen is always unregisted.
-    unreg() {
+
+        unreg() {
         echo "Cleaning up Red Hat subscription..."
         subscription-manager unregister || true
         subscription-manager clean || true
@@ -14,29 +30,6 @@ From: redhat/ubi10
     touch /etc/localtime
     mkdir -p /p/work/jogra
 
-    subscription-manager register --username julietgolf --password 'V^3bjuc&@^VN4cH2SFW@'
-    dnf config-manager --enable codeready-builder-for-rhel-10-x86_64-rpms
-    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
-    
-    echo "Installing dnf packages"
-    echo ""
-    # Install dnf packages
-    PACKAGES="
-    #General
-        glibc-langpack-en git 
-    #x11
-        libX11 libXext libXrender
-    #qt6
-        mesa-libGL libxkbcommon libxkbcommon libglvnd-egl fontconfig 
-        libxkbcommon-x11 xcb-util-cursor xcb-util-wm xcb-util-keysyms
-    "
-
-    dnf makecache
-    dnf install -y $PACKAGES 
-
-
-
-    echo "Fixing tar"
     mv /bin/tar /bin/_tar
     cat <<EOF > /bin/tar
 #!/bin/bash
@@ -46,10 +39,68 @@ EOF
 
     chmod 755 /bin/tar
 
+    subscription-manager register --username julietgolf --password 'V^3bjuc&@^VN4cH2SFW@'
+    dnf config-manager --enable codeready-builder-for-rhel-10-x86_64-rpms
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+    
+    echo "Installing dnf packages"
+    echo ""
+    # Install dnf packages
+        #glibc-langpack-en git openssh-clients
+        #libX11 libXext libXrender
+        #mesa-libGL libxkbcommon libxkbcommon libglvnd-egl fontconfig 
+        #libxkbcommon-x11 xcb-util-cursor xcb-util-wm xcb-util-keysyms
+    PACKAGES="
+        glibc-langpack-en git openssh-clients
+        which procps hostname ca-certificates wget
+        dnf-plugins-core gcc make python3-devel 
+        zlib-devel openssl-devel expat-devel
+        libX11 libX11-devel libXext libXrender
+        mesa-libGL libxkbcommon libglvnd-egl fontconfig 
+        libxkbcommon-x11 xcb-util-cursor xcb-util-wm xcb-util-keysyms
+        tcl-devel tk-devel
+    "
+
+    dnf makecache
+    dnf install -y $PACKAGES --disableplugin=subscription-manager
+
     cd /opt
+    
+    export SSH_AUTH_SOCK={{ ssh_auth_sock }}
+    echo ~
+    if ! ssh-keygen -F github.com > /dev/null; then
+        echo " int the system"
+        ssh-keyscan github.com >> /root/.ssh/known_hosts
+    fi
+
+    ssh -T git@github.com 2>&1 || exit_status=$?
+    if [ "$exit_status" -gt 1 ]; then
+        echo "ERROR: SSH Connection failed with status $exit_status"
+        exit $exit_status
+    fi
+
+    ls ~/.ssh
+
     git clone git@github.com:julietgolf/asgs_gui.git
-    cd asgs_gui
+    touch /opt/asgs_gui/README.md
     python3 -m venv .venv
     . .venv/bin/activate
     pip install uv
     uv pip install .
+
+    mkdir /opt/asgs_ipc_handler
+
+%runscript
+    [ ! -z "$HOME" ] || HOME=$(realpath ~)
+    server_meta_dir="${HOME}/.asgsh"
+    if [ ! -d "${server_meta_dir}" ]; then
+        if [ ! -f $ASGS_SERVER_DIR/asgs_server.sh ];then
+            echo "Could not find startup script"
+            exit 1
+        fi
+        $ASGS_SERVER_DIR/asgs_server.sh &
+        echo "Server started"
+    fi
+    echo "Launching gui"
+    . /opt/asgs_gui/.venv/bin/activate
+    asgs-gui
