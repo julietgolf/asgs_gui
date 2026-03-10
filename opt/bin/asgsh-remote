@@ -1,0 +1,87 @@
+#!/bin/bash
+
+clean () { 
+    if [ -n "$READER_PID" ] && kill -0 "$READER_PID" 2> /dev/null;then
+        kill "$READER_PID"
+    fi
+    }
+
+trap clean EXIT
+
+kill_asgsh () {
+    [ ! -z "$HOME" ] || HOME=$(realpath ~)
+    pid_file="$HOME/.asgsh/pid"
+    
+    if [ ! -d "${HOME}/.asgsh" ];then
+        echo "No asgsh meta dir at ${HOME}/.asgsh. Aborting"
+        exit 1
+    elif [ ! -f "${pid_file}" ];then
+        echo "${pid_file} is not a file. Removing metadir and aborting"
+        rm -r "$HOME/.asgsh"
+        exit 2
+    else
+        echo "Found ${pid_file}. Killing"
+    fi
+
+    mapfile -t pids < "${pid_file}"
+    echo "kill ${pids[0]}"
+    kill "${pids[0]}"
+
+    echo "kill ${pids[1]}"
+    kill "${pids[1]}" 
+
+    echo "asgs killed. Removing meta dir"
+    
+    rm -r "$HOME/.asgsh"
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --kill)
+            kill_asgsh
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# Find pipes for the server
+[ ! -z "$HOME" ] || HOME=$(realpath ~)
+server_meta_dir="${HOME}/.asgsh"
+if [ ! -d "${server_meta_dir}" ]; then
+    if [ ! -f $ASGS_GUI_LIBEXEC/asgs_server.sh ];then
+        echo "Could not find startup script"
+        exit 1
+    fi
+    $ASGS_GUI_LIBEXEC/asgs_server.sh &
+    echo "Server started"
+fi
+
+pipein="${server_meta_dir}/pipein"
+pipeout="${server_meta_dir}/pipeout"
+
+# Outputs from the server
+reader_out () {
+    cat "${pipeout}" > /dev/tty
+}
+
+# Start the reader as background service so it prints continuously 
+reader_out &
+READER_PID=$!
+# close_asgs is not internal to the server
+echo "" > "${pipein}"
+printf "\nTo exit without closing server run:\nclose_asgs\n" > "/dev/tty"
+
+# Run user input
+while true; do 
+    read -r command
+    if [[ $(echo "$command" | tr -d '[:space:]') == "close_asgs" ]];then
+        break
+    fi
+    echo "$command" 
+    if [[  $(echo "$command" | tr -d '[:space:]') == "exit" ]];then
+        break
+    fi
+done > "${pipein}"

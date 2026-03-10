@@ -1,25 +1,13 @@
 Bootstrap: docker
 From: registry.access.redhat.com/ubi10/ubi:latest
 
-%setup
-
-
-    if [ ! -e ${APPTAINER_ROOTFS}/{{ ssh_auth_sock }} ];then
-        mkdir -p $(dirname ${APPTAINER_ROOTFS}/{{ ssh_auth_sock }})
-        touch ${APPTAINER_ROOTFS}/{{ ssh_auth_sock }}
-        ls ${APPTAINER_ROOTFS}/{{ ssh_auth_sock }}
-    fi
-    if [ ! -e ${APPTAINER_ROOTFS}/root/.ssh/known_hosts ];then
-        mkdir -p ${APPTAINER_ROOTFS}/root/.ssh/
-        touch ${APPTAINER_ROOTFS}/root/.ssh/known_hosts
-        chmod -R 700 ${APPTAINER_ROOTFS}/root/.ssh
-        chmod 644 ${APPTAINER_ROOTFS}/root/.ssh/known_hosts
-    fi
+%files
+    {{ whl_dir }}/{{ whl_name }} /opt/{{ whl_name }}
 
 %post
+    ls /tmp
     #This ensures the systen is always unregisted.
-
-        unreg() {
+    unreg() {
         echo "Cleaning up Red Hat subscription..."
         subscription-manager unregister || true
         subscription-manager clean || true
@@ -28,7 +16,7 @@ From: registry.access.redhat.com/ubi10/ubi:latest
     trap unreg EXIT
 
     touch /etc/localtime
-    mkdir -p /p/work/jogra
+    #mkdir -p /p/work/jogra
 
     mv /bin/tar /bin/_tar
     cat <<EOF > /bin/tar
@@ -36,6 +24,13 @@ From: registry.access.redhat.com/ubi10/ubi:latest
 _tar --no-same-owner \$(perl -pe 's/(?<![-\w])([a-zA-Z?]{1,10})(?= .*\.(?:tar\.gz|tgz))/-\$1/g' <<< \$@)
 
 EOF
+    
+    python3 -m venv /opt/asgs_gui_venv
+    . /opt/asgs_gui_venv/bin/activate
+    pip install uv 
+    uv pip install /opt/{{ whl_name }}
+    rm /opt/{{ whl_name }}
+    #mkdir /opt/asgs_ipc_handler
 
     chmod 755 /bin/tar
 
@@ -64,43 +59,8 @@ EOF
     dnf makecache
     dnf install -y $PACKAGES --disableplugin=subscription-manager
 
-    cd /opt
-    
-    export SSH_AUTH_SOCK={{ ssh_auth_sock }}
-    echo ~
-    if ! ssh-keygen -F github.com > /dev/null; then
-        echo " int the system"
-        ssh-keyscan github.com >> /root/.ssh/known_hosts
-    fi
-
-    ssh -T git@github.com 2>&1 || exit_status=$?
-    if [ "$exit_status" -gt 1 ]; then
-        echo "ERROR: SSH Connection failed with status $exit_status"
-        exit $exit_status
-    fi
-
-    ls ~/.ssh
-
-    git clone git@github.com:julietgolf/asgs_gui.git
-    touch /opt/asgs_gui/README.md
-    python3 -m venv .venv
-    . .venv/bin/activate
-    pip install uv
-    uv pip install .
-
-    mkdir /opt/asgs_ipc_handler
 
 %runscript
-    [ ! -z "$HOME" ] || HOME=$(realpath ~)
-    server_meta_dir="${HOME}/.asgsh"
-    if [ ! -d "${server_meta_dir}" ]; then
-        if [ ! -f $ASGS_SERVER_DIR/asgs_server.sh ];then
-            echo "Could not find startup script"
-            exit 1
-        fi
-        $ASGS_SERVER_DIR/asgs_server.sh &
-        echo "Server started"
-    fi
     echo "Launching gui"
-    . /opt/asgs_gui/.venv/bin/activate
+    . /opt/asgs_gui_venv/bin/activate
     asgs-gui

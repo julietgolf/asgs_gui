@@ -1,0 +1,268 @@
+#!/bin/bash
+
+cd $(dirname "$(readlink -f $0)")
+
+check_python_version () {
+    py_ver=$(python --version 2>&1 | grep -P "3\.[19]\d*\.\d")
+    if [ $? -eq 0 ];then
+        return 0
+    else
+        return 1
+    fi
+}
+
+install () {
+    # --- Default Values ---
+    prefix=""
+    asgs_home=""
+    modfile_home=$HOME/modulefiles
+
+    printf '%s\n' "$*"
+
+
+    # --- Argument Parsing ---
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --prefix)
+                shift
+                prefix=$1
+                shift
+                ;;
+            --asgs-home)
+                shift
+                asgs_home=$1
+                shift
+                ;;
+            --modfile-home)
+                shift
+                asgs_home=$1
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: $0 install [options]"
+                echo "  -c, --clean        Remove .venv and dist/ before building"
+                echo "      --clobber      Remove .venv and dist/ before building"
+                #echo "  -d, --debug        Enable verbose output"
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+
+    if [ -z "$prefix" ] || [ -z "$asgs_home" ];then
+        echo "Please provide --prefix and --asgs-home. Aborting"
+        exit 30
+    fi
+
+    set -o xtrace
+    set -e
+
+    #Edit and place module file
+    cp "modfile/0.1.0" ./0.1.0
+    sed -i "s|%PREFIX%|$prefix|m" ./0.1.0
+    sed -i "s|%ASGS_HOME%|$asgs_home|m" ./0.1.0
+
+    mkdir -p $modfile_home/asgs
+    mv ./0.1.0 $modfile_home/asgs
+
+    #Install executables
+    mkdir -p $prefix/bin
+    mkdir -p $prefix/libexec
+
+    cp ./opt/bin/* $prefix/bin
+    cp ./opt/libexec/* $prefix/libexec
+
+}
+
+#########
+# Setup #
+#########
+
+# --- Default Values ---
+FORCE_SIF=false
+FORCE_WHL=false
+WHL_ONLY=false
+CLEAN_BUILD=false
+CLOBBER_BUILD=false
+PYTHON_VER=""
+
+# --- Argument Parsing ---
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        install)
+            shift
+            install $*
+            exit
+            ;;
+        -w|--whl_only)
+            WHL_ONLY=true
+            shift
+            ;;
+        -f|--force)
+            FORCE_SIF=true
+            FORCE_WHL=true
+            shift
+            ;;
+        --force_sif)
+            FORCE_SIF=true
+            shift
+            ;;
+        --force_whl)
+            FORCE_WHL=true
+            shift
+            ;;
+        -p)
+            shift
+            PYTHON_VER=$1
+            shift
+            ;;
+        -c|--clean)
+            CLEAN_BUILD=true
+            shift
+            ;;
+        --clobber)
+            CLEAN_BUILD=true
+            CLOBBER_BUILD=true
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: $0 [options]"
+            echo "  -w, --whl_only     Build the whl file standalone"
+            echo "  -f, --force        Rebuild the whl and sif file even if it exists"
+            echo "      --force_sif    Rebuild the sif file even if it exists"
+            echo "      --force_whl    Rebuild the whl file even if it exists"
+            echo "  -c, --clean        Remove .venv and dist/ before building"
+            echo "      --clobber      Remove .venv and dist/ before building"
+            #echo "  -d, --debug        Enable verbose output"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+WHL_ONLY=$WHL_ONLY || $FORCE_WHL
+
+# --- Clean repo ---
+if [ "$CLEAN_BUILD" = true ]; then
+    if [ "$CLOBBER_BUILD" = true ]; then
+        echo "Clobbering workspace..."
+        rm ./opt/libexec/asgs_gui.sif 2> /dev/null
+    else
+        echo "Cleaning workspace..."
+    fi
+    rm -rf .venv dist/ 2> /dev/null
+    exit 0
+fi
+
+#########
+# Build #
+#########
+set -e
+
+# --- Build whl ---
+
+# --- Check python ---
+if ! ls dist/asgs_gui*.whl &> /dev/null; then
+
+    if [ ! -d .venv ];then
+        if ! command -v python &> /dev/null || ! check_python_version;then
+            mod_python=$(module avail python 2>&1 | grep -Pm 1 "python/(?:3\.[19]\d*\.\d|latest)")
+            if [ -z "$mod_python" ];then
+                echo "Could not find valid python. Aborting"
+                exit 10
+            else
+                echo "Found python module ${mod_python}. Loading"
+                module load $mod_python
+                if [[ "$mod_python" =~ "latest" ]] && ! check_python_version;then
+                    echo "Module 'python/latest' did not meet version requirements. Aborting"
+                    exit 11
+                fi
+            fi
+        fi
+        echo "Building venv"
+        python -m venv .venv
+    fi
+
+    . .venv/bin/activate
+    trap deactivate EXIT
+    echo "Using $(python --version)."
+
+    if [ -d "dist/" ];then
+        if [ "$FORCE_WHL" = true ];then
+            rm -rf dist/ 2> /dev/null
+        fi
+    fi
+
+    if ! pip show uv &> /dev/null;then
+        echo "Could not find uv. Installing."
+        pip install --upgrade pip
+        if ! pip install uv;then
+            echo "uv failed to install. Aborting"
+            exit 12
+        fi
+    fi
+
+    if [ -n "$PYTHON_VER" ];then
+        uv python install "${PYTHON_VER}"
+        build_flag="--python ${PYTHON_VER}"
+    fi
+
+    echo "Beginning asgs-gui whl build."
+
+    uv build $build_flag
+
+    if ! ls dist/asgs_gui*.whl &> /dev/null; then
+        echo "uv failed to build whl file. Aborting"
+        exit 13
+    fi
+    echo "whl file built."
+else
+    echo "whl found. Skipping whl build."
+fi
+
+if [ $WHL_ONLY = true ];then
+    exit 0
+fi
+
+# --- Build sif ---
+
+# --- Check apptainer ---
+if ! command -v apptainer &> /dev/null;then
+    mod_apptainer=$(module avail apptainer 2>&1 | grep -Pm 1 "apptainer/.*")
+    if [ -z "$mod_apptainer" ];then
+        echo "Could not find valid apptainer. Aborting"
+        exit 20
+    else
+        echo "Found apptainer module ${mod_apptainer}. Loading"
+        module load apptainer
+        if ! command -v apptainer &> /dev/null;then
+            exit 21
+        fi
+    fi
+fi
+echo "Using $(apptainer --version)."
+
+if [ "$FORCE_SIF" = true ];then
+    rm -r ./opt/libexec/asgs_gui.sif.sif 2> /dev/null
+fi
+
+if [ ! -f "./opt/libexec/asgs_gui.sif" ];then
+    whl_dir=$(pwd -P)/dist
+    whl_name=$(basename $(ls -t dist/asgs_gui*.whl | head -n 1))
+    apptainer build --fakeroot \
+     --build-arg whl_dir="$whl_dir" \
+     --build-arg whl_name="$whl_name" \
+     ./opt/libexec/asgs_gui.sif asgs_gui.def
+    #if [ ! $? -eq 0 ];then
+    #    echo "sif failed to build. Aborting"
+    #    exit 21 
+    #fi
+else
+    echo "sif found. Skipping sif build."
+fi

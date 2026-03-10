@@ -1,0 +1,14 @@
+#!/bin/bash
+
+[ ! -z "$HOME" ] || HOME=$(realpath ~)
+server_meta_dir="${HOME}/.asgsh"
+if [ ! -d "${server_meta_dir}" ]; then
+    if [ ! -f $ASGS_GUI_LIBEXEC/asgs_server.sh ];then
+        echo "Could not find startup script"
+        exit 1
+    fi
+    $ASGS_GUI_LIBEXEC/asgs_server.sh &
+    echo "Server started"
+fi
+
+apptainer run --env ASGS_SERVER_DIR="$ASGS_GUI_LIBEXEC" --bind "$ASGS_HOME:$ASGS_HOME" $ASGS_GUI_LIBEXEC/asgs_gui.sif 
