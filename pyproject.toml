@@ -17,5 +17,5 @@ dependencies = [
 asgs-gui = "asgs_gui.__main__:run"
 
 [build-system]
-requires = ["uv_build>=0.9.26,<0.10.0"]
+requires = ["uv_build>=0.9.26,<0.11"]
 build-backend = "uv_build"

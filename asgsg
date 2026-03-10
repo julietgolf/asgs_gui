@@ -1,2 +1,0 @@
-#!/bin/bash
-$ASGS_HOME/asgsh -A ". /opt/asgs_gui/launch_gui"
