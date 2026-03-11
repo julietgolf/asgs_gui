@@ -1,0 +1,66 @@
+Bootstrap: docker
+From: registry.access.redhat.com/ubi10/ubi:latest
+
+%files
+    {{ whl_dir }}/{{ whl_name }} /opt/{{ whl_name }}
+
+%post
+    ls /tmp
+    #This ensures the systen is always unregisted.
+    unreg() {
+        echo "Cleaning up Red Hat subscription..."
+        subscription-manager unregister || true
+        subscription-manager clean || true
+    }
+
+    trap unreg EXIT
+
+    touch /etc/localtime
+    #mkdir -p /p/work/jogra
+
+    mv /bin/tar /bin/_tar
+    cat <<EOF > /bin/tar
+#!/bin/bash
+_tar --no-same-owner \$(perl -pe 's/(?<![-\w])([a-zA-Z?]{1,10})(?= .*\.(?:tar\.gz|tgz))/-\$1/g' <<< \$@)
+
+EOF
+    
+    python3 -m venv /opt/asgs_gui_venv
+    . /opt/asgs_gui_venv/bin/activate
+    pip install uv 
+    uv pip install /opt/{{ whl_name }}
+    rm /opt/{{ whl_name }}
+    #mkdir /opt/asgs_ipc_handler
+
+    chmod 755 /bin/tar
+
+    subscription-manager register --username {{ rhel_un }} --password {{ rhel_pwd }}
+    dnf config-manager --enable codeready-builder-for-rhel-10-x86_64-rpms
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+    
+    echo "Installing dnf packages"
+    echo ""
+    # Install dnf packages
+        #glibc-langpack-en git openssh-clients
+        #libX11 libXext libXrender
+        #mesa-libGL libxkbcommon libxkbcommon libglvnd-egl fontconfig 
+        #libxkbcommon-x11 xcb-util-cursor xcb-util-wm xcb-util-keysyms
+    PACKAGES="
+        glibc-langpack-en git openssh-clients
+        which procps hostname ca-certificates wget
+        dnf-plugins-core gcc make python3-devel 
+        zlib-devel openssl-devel expat-devel
+        libX11 libX11-devel libXext libXrender
+        mesa-libGL libxkbcommon libglvnd-egl fontconfig 
+        libxkbcommon-x11 xcb-util-cursor xcb-util-wm xcb-util-keysyms
+        tcl-devel tk-devel
+    "
+
+    dnf makecache
+    dnf install -y $PACKAGES --disableplugin=subscription-manager
+
+
+%runscript
+    echo "Launching gui"
+    . /opt/asgs_gui_venv/bin/activate
+    asgs-gui
