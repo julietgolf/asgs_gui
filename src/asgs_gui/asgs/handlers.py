@@ -8,12 +8,14 @@ from ..base.base_types import DIALOGUE_INPUT_TYPE
 from .env_var import ENV_Var_File
 import os,sys,signal #psutil
 import warnings
-#TODO Turn this into a module
-#TODO Transition from inputs to sb
+
+#TODO Delete every thing and redo it
+#TODO Sleep
 
 #ADCIRC_PROFILE_NAME=
 #
 
+# In an ideal world this is useless. But idealism died
 class _Server_Handler:
     def __init__(self):
         self.server_meta_dir=Path(f"{os.getenv("HOME")}/.asgsh")
@@ -88,7 +90,7 @@ class _Server_Handler:
         self.pipeout.close()
 
 class ASGS_API:
-    """This is becuase of DOGE. Fuck me."""
+    """This is what happens when you gut the pencil pushers. Fuck me."""
 
     @staticmethod
     def _check_dirname(name:str):
@@ -124,7 +126,7 @@ class ASGS_API:
                     return line.strip().split("=")[1]
     
     @classmethod
-    def _get_config_years(cls):
+    def _get_config_years(cls): 
         return cls.config_years.value
 
     @classmethod
