@@ -258,6 +258,7 @@ if [ ! -f "./opt/libexec/asgs_gui.sif" ];then
     apptainer build --fakeroot \
      --build-arg whl_dir="$whl_dir" \
      --build-arg whl_name="$whl_name" \
+     --build-arg-file rhel_login \
      ./opt/libexec/asgs_gui.sif asgs_gui.def
     #if [ ! $? -eq 0 ];then
     #    echo "sif failed to build. Aborting"

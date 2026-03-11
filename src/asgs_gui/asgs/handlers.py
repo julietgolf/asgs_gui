@@ -6,8 +6,7 @@ import re
 from pathlib import Path
 from ..base.base_types import DIALOGUE_INPUT_TYPE
 from .env_var import ENV_Var_File
-import os,sys,signal #psutil
-import warnings
+import os #psutil
 
 #TODO Delete every thing and redo it
 #TODO Sleep
@@ -42,7 +41,7 @@ class _Server_Handler:
 #
         #while True:
         #    line=self.pipeout.readline()
-        #    print(line,end="")
+        #    #print(line,end="")
         #    line=self._ansi_filter.sub("",line)
         #    if line == "--end--\n":#re.search(self._prompt,line):
         #        #print("line 35: Broken")
@@ -51,7 +50,7 @@ class _Server_Handler:
         #start_file.touch()
 
     def run(self,command):
-        print(command+f" > {self._server_call_out}; echo "+self._end_token)
+        #print(command+f" > {self._server_call_out}; echo "+self._end_token)
         self.pipein.write(command+f" > {self._server_call_out}; echo "+self._end_token)
         self.pipein.flush()
         if command=="run":
@@ -59,13 +58,13 @@ class _Server_Handler:
         output=""
         while True:
             line=self.pipeout.readline()
-            print(line)
+            #print(line)
             if line==self._end_token:
                 break
         with open(self._server_call_out,"r") as out:
             while True:
                 line=out.readline()
-                print("line",line)
+                #print("line",line)
                 #line=self.pipeout.readline()
                 if not line:
                     break
@@ -80,7 +79,7 @@ class _Server_Handler:
                 #elif self._end_token in line:
                 #    continue
                 else:
-                    print(line)
+                    #print(line)
                     output+=line
 
         return output
@@ -90,7 +89,7 @@ class _Server_Handler:
         self.pipeout.close()
 
 class ASGS_API:
-    """This is what happens when you gut the pencil pushers. Fuck me."""
+    """This is what happens when you gut the pencil pushers. 6ac3c336e4094835293a3fed8a4b5fedde1b5e2626d9838fed50693bba00af0e me."""
 
     @staticmethod
     def _check_dirname(name:str):
@@ -103,7 +102,7 @@ class ASGS_API:
     @classmethod
     def _shell_command(cls,command:str,capture_output=True) -> str:
         #TODO each new command needs to be as a security threat to prevent command line injection attacks
-        print(f"running command: {command}")
+        #print(f"running command: {command}")
         if capture_output:
             result=cls._server.run(command)
             return result
@@ -117,7 +116,7 @@ class ASGS_API:
 
     @classmethod
     def _get_mesh(cls,config_path=None):
-        print("_get_mesh")
+        #print("_get_mesh")
         if config_path is None:
             config_path=cls._get_config_path()
         with open(config_path, 'r') as f:
@@ -131,25 +130,25 @@ class ASGS_API:
 
     @classmethod
     def _get_config_path(cls):
-        print("_get_config_path")
+        #print("_get_config_path")
         return cls._config_path#Path(cls._pro_file.variables["ASGS_HOME"].value)/"config"/cls._get_config_years()/cls.config.value
 
 
     @classmethod
     def _get_config(cls):
-        print("_get_config")
+        #print("_get_config")
         return cls._pro_file.variables["ASGS_CONFIG"].value
         #return re.findall(r"(?<=').*(?=')",cls.show("config").strip())[0]
     
     @classmethod
     def _get_profile(cls):
-        print("_get_profile")
+        #print("_get_profile")
         return ASGS_API.profile.value
         return re.findall(r"(?<=').*(?=')",cls.show("profile").strip())[0]
     
     @classmethod
     def _get_adcirc(cls):
-        print("_get_adcirc")
+        #print("_get_adcirc")
         return cls._pro_file.variables["ADCIRC_PROFILE_NAME"].value
         return os.getenv("ADCIRC_PROFILE_NAME")
 
@@ -167,20 +166,20 @@ class ASGS_API:
 
     @classmethod
     def _set_config_path(cls,config_path=None):
-        print("naisfj")
+        #print("naisfj")
         if config_path is None:
             config_path=cls._get_config_path()
         if not isinstance(config_path,Path):
             config_path=Path(config_path)
         
-        print(config_path)
+        #print(config_path)
         cls._config_path=config_path
         cls._set_config(config_path.name)
         #cls._set_mesh(cls._get_mesh())
 
     @classmethod
     def _set_config(cls,config=None):
-        print("setting config",config)
+        #print("setting config",config)
         #if config is None:
             #year,config=str(cls._get_config()).split("/")[-2:]
             #print(year)
@@ -198,7 +197,7 @@ class ASGS_API:
     def _set_options(cls,var: Variable):
         if var.name!="config":
             result=cls.list(cls._PARAM_PLURALS[var.name])
-            print("reult",[val.split()[-1].strip() for val in result])
+            #print("reult",[val.split()[-1].strip() for val in result])
             var.options=[val.split()[-1].strip() for val in result]
         else:
             #TODO Add a config dirs option
@@ -212,15 +211,15 @@ class ASGS_API:
 
         cls._ASGS_HOME=Path(cls._server.run("echo $ASGS_HOME").strip())
 
-        print("running")
+        #print("running")
         #cls.load("profile","default-asgs")
         current_profile=re.findall(r"(?<=').*(?=')",cls.show("profile").strip())[0]
         cls.profile=Variable("profile",current_profile,"Profile",current_profile)
-        print(cls._ASGS_HOME/"profiles"/cls.profile.value)
+        #print(cls._ASGS_HOME/"profiles"/cls.profile.value)
         cls._pro_file=ENV_Var_File.load(cls._ASGS_HOME/"profiles"/cls.profile.value)
-        print(cls._pro_file)
+        #print(cls._pro_file)
         cls._set_options(cls.profile)
-        print(cls.profile)
+        #print(cls.profile)
 
         current_config=cls._pro_file.variables["ASGS_CONFIG"].value#cls._get_config()
 
@@ -241,7 +240,7 @@ class ASGS_API:
         cls.config=Variable("config",current_config.name,"Config")
         #cls._set_options(cls.config)
 
-        print(cls.config)
+        #print(cls.config)
 
 
         #echo $ADCIRC_PROFILE_NAME
@@ -249,13 +248,13 @@ class ASGS_API:
         cls.adcirc=Variable("adcirc",current_adcirc,"ADCIRC",current_adcirc)
         cls._set_options(cls.adcirc)
         #cls._adc_file=ENV_Var_File.load(Path(cls._pro_file.variables["ADCIRC_META_DIR"].value)/cls.adcirc.value)
-        print(cls.adcirc)
+        #print(cls.adcirc)
 
 
         current_mesh=cls._get_mesh()
         cls.mesh=Variable("mesh",current_mesh,"Mesh",current_mesh)
         cls._set_options(cls.mesh)
-        print(cls.mesh)
+        #print(cls.mesh)
 
         cls._run_proc=None
 

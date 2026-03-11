@@ -1,10 +1,9 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem,
-    QPushButton, QLabel, QLineEdit, QDialog, QFormLayout, QDialogButtonBox, QMessageBox,
+    QWidget, QVBoxLayout,  
+    QPushButton, QLabel,     
     QMainWindow, QDockWidget, QListView, QSpacerItem, QSizePolicy, QStackedWidget, 
-    QComboBox, QStackedLayout
-)
+    )
 from collections.abc import Callable
 from typing import Literal
 from .base_types import SIGNALS_TYPE
@@ -43,7 +42,7 @@ class ParentWidget(QStackedWidget):
         """Moves a widget to the top."""
         if isinstance(widget,str):
             widget=self._widgets[widget][0]
-        print(widget)
+        #print(widget)
         self.setCurrentWidget(widget)
 
     def __index__(self,key):

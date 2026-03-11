@@ -28,7 +28,7 @@ class ASGS_Input_Basic(QWidget):
         self.inputs[var.name]=line_edit
 
     def _set_checkbox(self,var,mutable=True):
-        raise NotImplementedError("Add this you fucking moron") #TODO
+        raise NotImplementedError("Add this you 6ac3c336e4094835293a3fed8a4b5fedde1b5e2626d9838fed50693bba00af0eing moron") #TODO
 
     def __init__(self,handler=None,ok_button=True):
         super().__init__()
@@ -86,7 +86,7 @@ class Profile_Save_Dialog(QDialog):
                 profile_combobox.addItem(text)
                 profile_combobox.setCurrentIndex(profile_combobox.count()-1)
 
-                print(str(profile_combobox.currentText()))
+                #print(str(profile_combobox.currentText()))
         else:
             text=self.line_edit.placeholderText()
             ASGS_API.save("profile",text,not self._parent._ca_change[1])
@@ -152,33 +152,25 @@ class ASGS_Run_Input(ASGS_Input_Basic):
         
 
     def change_profile(self):
-        print("Chanfing profile")
+        #print("Chanfing profile")
         ASGS_API.load("profile",str(self.inputs["profile"].currentText()))
-        print("Chanfing profile ")
-
-        #index = self.inputs["config_years"].findText(self.handler.var_hold_obj.variables["config_years"].value)
-        #print(index)
-        #if index >= 0:
-        #    #SGS_API._set_config()
-        #    self.inputs["config_years"].setCurrentIndex(index)
-        #else:
-        #    print("fuck",self.handler.var_hold_obj.variables["config_years"].value)
+        #print("Chanfing profile ")
 
         self.inputs["config"].setText(self.handler.var_hold_obj.variables["config"].value)
         self.inputs["mesh"].setText(self.handler.var_hold_obj.variables["mesh"].value)
 
         index = self.inputs["adcirc"].findText(self.handler.var_hold_obj.variables["adcirc"].value)
-        print(index)
+        #print(index)
         if index >= 0:
             self.inputs["adcirc"].setCurrentIndex(index)
-        else:
-            print("coundlfind adcirc")
+        #else:
+        #    #print("coundlfind adcirc")
 
         self._ca_change[0]=True
         self._ca_change[1]=True
 
     def change_config_years(self):
-        print("asgs")
+        #print("asgs")
 
         #self.changedyear=True
         ASGS_API._set_config_years(str(self.inputs["config_years"].currentText()))
@@ -204,14 +196,14 @@ class ASGS_Run_Input(ASGS_Input_Basic):
         file_dialog.setDirectory(str(ASGS_API._ASGS_HOME))
         if file_dialog.exec():
             config=file_dialog.selectedFiles()[0]
-            print(config)
+            #print(config)
             
         else:
             return
 
         #config=self.inputs["config"].currentText()
-        print("config")
-        print(config)
+        #print("config")
+        #print(config)
         ASGS_API._set_config_path(config)
         self.inputs["config"].setText(self.handler.var_hold_obj.variables["config"].value)
         self.inputs["mesh"].setText(self.handler.var_hold_obj.variables["mesh"].value)
@@ -219,25 +211,24 @@ class ASGS_Run_Input(ASGS_Input_Basic):
         self._ca_change[0]=False
 
     def change_adcirc(self):
-        print("adcirc")
-        print(self.inputs["adcirc"].currentText())
+        #print("adcirc")
+        #print(self.inputs["adcirc"].currentText())
         ASGS_API.load("adcirc",self.inputs["adcirc"].currentText()) 
         self._ca_change[1]=False
 
     def start_run(self):
         if not all(self._ca_change):
-            print("GOOOD DDDANMIT")
+            #print("GOOOD DDDANMIT")
             Profile_Save_Dialog(self,"Profile settings changed. Please save before running.")
             if not all(self._ca_change):
                 return
 
-        print("*LK* ... Nice")
+        #print("*LK* ... Nice")
         ASGS_API.run()
 
     def stop_run(self):
         ASGS_API._run_proc.terminate()
         ASGS_API._run_proc.kill()
-
 
     def save_profile(self):
         self.inputs["profile"].blockSignals(True)
