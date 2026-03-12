@@ -1,9 +1,8 @@
 #%Module
 
-module load apptainer
-
 set PREFIX %PREFIX%
 
-setenv ASGS_HOME               %ASGS_HOME%
+setenv ASGS_HOME              %ASGS_HOME%
+setenv APPTAINER_BIND         %APPTAINER_BIND%
 setenv ASGS_GUI_LIBEXEC       ${PREFIX}/libexec
 prepend-path PATH             ${PREFIX}/bin

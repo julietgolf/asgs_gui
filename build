@@ -16,6 +16,7 @@ install () {
     prefix=""
     asgs_home=""
     modfile_home=$HOME/modulefiles
+    bind_paths=""
 
     printf '%s\n' "$*"
 
@@ -35,13 +36,21 @@ install () {
                 ;;
             --modfile-home)
                 shift
-                asgs_home=$1
+                modfile_home=$1
+                shift
+                ;;
+            --bind)
+                shift
+                bind_paths=$1
                 shift
                 ;;
             -h|--help)
-                echo "Usage: $0 install [options]"
-                echo "  -c, --clean        Remove .venv and dist/ before building"
-                echo "      --clobber      Remove .venv and dist/ before building"
+                echo "Usage: $0 install --prefix <prefix> --asgs-home <asgs-home> [options]"
+                echo "      --prefix        Path where bin/ and libexec/ are or will be."
+                echo "      --asgs-home     Equivalent to \$ASGS_HOME variable."
+                echo "      --modfile-home  Path to modulefiles/ is or will be."
+                echo "      --bind          Comma separated string source:<dest> list of paths to bind."
+                echo "                      Sets APPTAINER_BIND env. See apptainer docs (https://apptainer.org/docs/user/latest/appendix.html#b)."
                 #echo "  -d, --debug        Enable verbose output"
                 exit 0
                 ;;
@@ -64,6 +73,7 @@ install () {
     cp "modfile/0.1.0" ./0.1.0
     sed -i "s|%PREFIX%|$prefix|m" ./0.1.0
     sed -i "s|%ASGS_HOME%|$asgs_home|m" ./0.1.0
+    sed -i "s|%APPTAINER_BIND%|$bind_paths|m" ./0.1.0
 
     mkdir -p $modfile_home/asgs
     mv ./0.1.0 $modfile_home/asgs
@@ -163,8 +173,8 @@ fi
 #########
 # Build #
 #########
-set -e
-
+#set -e
+echo "Starting build"
 # --- Build whl ---
 
 # --- Check python ---
