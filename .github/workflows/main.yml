@@ -38,13 +38,16 @@ jobs:
       # It assumes your definition file is named 'Apptainer.def' in the root of your repository.
       # The output SIF file will be named based on your repository and the tag.
       - name: Build SIF from definition file
+        env:
+          RHEL_USERNAME: ${{ secrets.RHEL_USERNAME }}
+          RHEL_PASSWORD: ${{ secrets.RHEL_PWD}}
         run: |
           # The GITHUB_REF_NAME variable contains the tag name (e.g., "v1.0.1")
           # We'll use this to name our output file.
           echo "Building SIF for tag ${{ github.ref_name }}"
           #apptainer build ${{ github.event.repository.name }}_${{ github.ref_name }}.sif Apptainer.def
-          sed -i "s/rhel_un=\"\"/rhel_un=\"${{ secrets.RHEL_USERNAME }}\"/" rhel_login
-          sed -i "s/rhel_pwd=\"\"/rhel_pwd=${{ secrets.RHEL_PWD }}/" rhel_login
+          sed -i "s/rhel_un=\"\"/rhel_un=\"$RHEL_USERNAME\"/" rhel_login
+          sed -i "s/rhel_pwd=\\"\\"/rhel_pwd=\\"$RHEL_PASSWORD\\"/" rhel_login
           cat rhel_login
           ./build
 
