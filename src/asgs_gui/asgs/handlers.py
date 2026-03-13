@@ -51,7 +51,7 @@ class _Server_Handler:
 
     def run(self,command,no_track=False):
         #print(command+f" > {self._server_call_out}; echo "+self._end_token)
-        if not no_track:
+        if no_track:
             self.pipein.write(command)
             self.pipein.flush()
             return
@@ -293,7 +293,7 @@ class ASGS_API:
 
     @classmethod
     def run(cls):
-        cls._shell_command(f"load profile {cls.profile.value}; run",capture_output=False)
+        cls._shell_command(f"load profile {cls.profile.value}; run",no_track=True)
         #cls._run_proc=sp.Popen(f"load profile {cls.profile.value}; run",shell=True,start_new_session=True)
 
 
