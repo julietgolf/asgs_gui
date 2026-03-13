@@ -290,7 +290,8 @@ class ASGS_API:
 
     @classmethod
     def run(cls):
-        cls._shell_command(f"run",capture_output=False)
+        cls._shell_command(f"load profile {cls.profile.value}; run",capture_output=False)
+        #cls._run_proc=sp.Popen(f"load profile {cls.profile.value}; run",shell=True,start_new_session=True)
 
 
     @classmethod
