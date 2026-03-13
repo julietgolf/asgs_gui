@@ -25,7 +25,24 @@ jobs:
       # Step 1: Check out the repository's code
       - name: Checkout Repository
         uses: actions/checkout@v4
+      
+      - name: Determine and Validate Version Tag
+        id: get_version
+        run: |
+          VERSION_TAG=""
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            VERSION_TAG="${{ github.ref_name }}"
+          else
+            VERSION_TAG="${{ inputs.version }}"
+          fi
 
+          if [[ -z "$VERSION_TAG" ]]; then
+            echo "Error: Version tag is empty. Please provide a tag via a tag push or the 'version' input for manual runs."
+            exit 1
+          fi
+          
+          echo "Using version tag: $VERSION_TAG"
+          echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
       # Step 2: Install Apptainer (formerly Singularity)
       # This action sets up the necessary environment for building .sif files.
       - name: Install Apptainer
