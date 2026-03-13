@@ -1,0 +1,72 @@
+name: Build SIF and Release
+
+# This workflow is triggered on a push to a tag that starts with 'v'
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build_and_release:
+    # Use the latest Ubuntu runner
+    runs-on: ubuntu-latest
+    permissions:
+      # This permission is required to create a release and upload assets
+      contents: write
+
+    steps:
+      # Step 1: Check out the repository's code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Install Apptainer (formerly Singularity)
+      # This action sets up the necessary environment for building .sif files.
+      - name: Install Apptainer
+        uses: eWaterCycle/setup-apptainer@v2
+        with:
+          apptainer-version: '1.4.4' # Specify a version of Apptainer
+
+      # Step 3: Build the SIF container
+      # This step runs the 'apptainer build' command.
+      # It assumes your definition file is named 'Apptainer.def' in the root of your repository.
+      # The output SIF file will be named based on your repository and the tag.
+      - name: Build SIF from definition file
+        run: |
+          # The GITHUB_REF_NAME variable contains the tag name (e.g., "v1.0.1")
+          # We'll use this to name our output file.
+          echo "Building SIF for tag ${{ github.ref_name }}"
+          #apptainer build ${{ github.event.repository.name }}_${{ github.ref_name }}.sif Apptainer.def
+          ./build
+
+      # Step 4: Create a GitHub Release
+      # This action creates a new release entry on your repository's "Releases" page.
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            Automated release of the SIF container for version ${{ github.ref_name }}.
+          draft: false
+          prerelease: false
+
+      # Step 5: Upload the SIF file as a Release Asset
+      # This action uploads the .sif file created in the build step to the release created above.
+      - name: Upload SIF file to Release
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # This URL is provided by the "Create Release" step
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          # Path to the file you want to upload
+          asset_path: ./opt/libexec/asgs_gui.sif
+          # The name of the file as it will appear in the release
+          asset_name: asgs_gui.sif
+          # The content type of the file
+          asset_content_type: application/octet-stream
+
