@@ -12,3 +12,4 @@ if [ ! -d "${server_meta_dir}" ]; then
 fi
 
 apptainer run --env ASGS_SERVER_DIR="$ASGS_GUI_LIBEXEC" --bind "$ASGS_HOME:$ASGS_HOME" $ASGS_GUI_LIBEXEC/asgs_gui.sif 
+asgsh-remote
