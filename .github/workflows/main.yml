@@ -45,12 +45,12 @@ jobs:
           # The GITHUB_REF_NAME variable contains the tag name (e.g., "v1.0.1")
           # We'll use this to name our output file.
           echo "Building SIF for tag ${{ github.ref_name }}"
-          #apptainer build ${{ github.event.repository.name }}_${{ github.ref_name }}.sif Apptainer.def
+          
           cat <<EOF > rhel_login
           rhel_un=$RHEL_USERNAME
           rhel_pwd=$RHEL_PASSWORD
           EOF
-          cat rhel_login
+
           ./build
 
       # Step 4: Create a GitHub Release
@@ -61,10 +61,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          # This now correctly uses the cleaned tag name from the 'get_version' step
+          tag_name: ${{ steps.get_version.outputs.version_tag }}
+          release_name: Release ${{ steps.get_version.outputs.version_tag }}
           body: |
-            Automated release of the SIF container for version ${{ github.ref_name }}.
+            Automated release of the SIF container for version ${{ steps.get_version.outputs.version_tag }}.
           draft: false
           prerelease: false
 
