@@ -49,12 +49,15 @@ class _Server_Handler:
         #
         #start_file.touch()
 
-    def run(self,command):
+    def run(self,command,no_track=False):
         #print(command+f" > {self._server_call_out}; echo "+self._end_token)
+        if not no_track:
+            self.pipein.write(command)
+            self.pipein.flush()
+            return
+        
         self.pipein.write(command+f" > {self._server_call_out}; echo "+self._end_token)
         self.pipein.flush()
-        if command=="run":
-            return
         output=""
         while True:
             line=self.pipeout.readline()
