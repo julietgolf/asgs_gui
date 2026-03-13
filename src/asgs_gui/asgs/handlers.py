@@ -103,11 +103,11 @@ class ASGS_API:
             raise ValueError(f"{name} is not a valid name")
 
     @classmethod
-    def _shell_command(cls,command:str,capture_output=True) -> str:
+    def _shell_command(cls,command:str,capture_output=True,no_track=False) -> str:
         #TODO each new command needs to be as a security threat to prevent command line injection attacks
         #print(f"running command: {command}")
         if capture_output:
-            result=cls._server.run(command)
+            result=cls._server.run(command,no_track=False)
             return result
             #errout=result.stderr.decode("utf-8")
             #if errout:
@@ -115,7 +115,7 @@ class ASGS_API:
             
             #return result.stdout.decode("utf-8")
         else:
-            cls._server.run(command)
+            cls._server.run(command,no_track=False)
 
     @classmethod
     def _get_mesh(cls,config_path=None):
