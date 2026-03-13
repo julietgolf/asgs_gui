@@ -47,7 +47,7 @@ jobs:
           echo "Building SIF for tag ${{ github.ref_name }}"
           #apptainer build ${{ github.event.repository.name }}_${{ github.ref_name }}.sif Apptainer.def
           sed -i "s/rhel_un=\"\"/rhel_un=\"$RHEL_USERNAME\"/" rhel_login
-          sed -i "s/rhel_pwd=\\"\\"/rhel_pwd=\\"$RHEL_PASSWORD\\"/" rhel_login
+          sed -i "s/rhel_pwd=\"\"/rhel_pwd="$RHEL_PASSWORD"/" rhel_login
           cat rhel_login
           ./build
 
