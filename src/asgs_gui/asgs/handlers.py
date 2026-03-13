@@ -58,13 +58,13 @@ class _Server_Handler:
         output=""
         while True:
             line=self.pipeout.readline()
-            #print(line)
+            print(line)
             if line==self._end_token:
                 break
         with open(self._server_call_out,"r") as out:
             while True:
                 line=out.readline()
-                #print("line",line)
+                print("line",line)
                 #line=self.pipeout.readline()
                 if not line:
                     break
