@@ -70,13 +70,14 @@ install () {
     set -e
 
     #Edit and place module file
-    cp "modfile/0.1.0" ./0.1.0
-    sed -i "s|%PREFIX%|$prefix|m" ./0.1.0
-    sed -i "s|%ASGS_HOME%|$asgs_home|m" ./0.1.0
-    sed -i "s|%APPTAINER_BIND%|$bind_paths|m" ./0.1.0
+    mod_name=$(ls modfile)
+    cp "modfile/$mod_name" ./$mod_name
+    sed -i "s|%PREFIX%|$prefix|m" ./$mod_name
+    sed -i "s|%ASGS_HOME%|$asgs_home|m" ./$mod_name
+    sed -i "s|%APPTAINER_BIND%|$bind_paths|m" ./$mod_name
 
     mkdir -p $modfile_home/asgs
-    mv ./0.1.0 $modfile_home/asgs
+    mv ./$mod_name $modfile_home/asgs
 
     #Install executables
     mkdir -p $prefix/bin
@@ -156,7 +157,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-WHL_ONLY=$WHL_ONLY || $FORCE_WHL
+FORCE_WHL=$WHL_ONLY || $FORCE_WHL
 
 # --- Clean repo ---
 if [ "$CLEAN_BUILD" = true ]; then
@@ -178,7 +179,7 @@ echo "Starting build"
 # --- Build whl ---
 
 # --- Check python ---
-if ! ls dist/asgs_gui*.whl &> /dev/null; then
+if ! ls dist/asgs_gui*.whl &> /dev/null || $FORCE_WHL; then
 
     if [ ! -d .venv ];then
         if ! command -v python &> /dev/null || ! check_python_version;then
@@ -259,10 +260,10 @@ fi
 echo "Using $(apptainer --version)."
 
 if [ "$FORCE_SIF" = true ];then
-    rm -r ./opt/libexec/asgs_gui.sif.sif 2> /dev/null
+    rm -r ./opt/libexec/asgs_gui.sif 2> /dev/null
 fi
 
-if [ ! -f "./opt/libexec/asgs_gui.sif" ];then
+if [ ! -f "./opt/libexec/asgs_gui.sif" ] || $FORCE_SIF;then
     whl_dir=$(pwd -P)/dist
     whl_name=$(basename $(ls -t dist/asgs_gui*.whl | head -n 1))
     apptainer build --fakeroot \
